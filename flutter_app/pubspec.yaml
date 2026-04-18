@@ -1,0 +1,26 @@
+name: smart_pedestrian_app
+description: Smart Pedestrian Detection Mobile App
+
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  http: ^1.2.0
+  fl_chart: ^0.68.0
+  cached_network_image: ^3.3.1
+  flutter_local_notifications: ^17.0.0
+  shared_preferences: ^2.2.2
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^3.0.0
+
+flutter:
+  uses-material-design: true

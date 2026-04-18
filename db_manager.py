@@ -20,7 +20,7 @@ DB_TYPE     = "postgresql"   # "postgresql" or "sqlite"
 PG_HOST     = "localhost"
 PG_PORT     = 5432
 PG_USER     = "postgres"
-PG_PASSWORD = "root"   # ← replace with your actual password
+PG_PASSWORD = os.environ.get("PG_PASSWORD", "root")   # set PG_PASSWORD env var in production
 PG_DBNAME   = "pedestrian_db"
 
 # SQLite fallback

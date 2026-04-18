@@ -1,3 +1,4 @@
+import os
 """
 saas_config.py — Smart City SaaS Tenant Configuration
 Each city/client is a tenant with its own cameras, limits, and branding.
@@ -8,10 +9,10 @@ Each city/client is a tenant with its own cameras, limits, and branding.
 TENANTS = {
     "city_pune": {
         "name":         "Pune Municipal Corporation",
-        "api_key":      "PMC-2024-XKJH91",
+        "api_key":      os.environ.get("API_KEY_PUNE", "PMC-2024-XKJH91"),
         "crowd_limit":  8,
         "cameras": {
-            "CAM_A": 0,                                  # webcam
+            "CAM_A": 0,
             "CAM_B": "http://10.211.20.90:8080/video",
             "CAM_C": "http://10.211.20.34:8080/video",
         },
@@ -21,7 +22,7 @@ TENANTS = {
     },
     "city_mumbai": {
         "name":         "Mumbai Traffic Authority",
-        "api_key":      "MTA-2024-LMNP42",
+        "api_key":      os.environ.get("API_KEY_MUMBAI", "MTA-2024-LMNP42"),
         "crowd_limit":  10,
         "cameras": {
             "CAM_A": "http://192.168.1.10:8080/video",
@@ -32,7 +33,7 @@ TENANTS = {
     },
     "mall_phoenix": {
         "name":         "Phoenix Mall Security",
-        "api_key":      "PHX-2024-QRST77",
+        "api_key":      os.environ.get("API_KEY_MALL", "PHX-2024-QRST77"),
         "crowd_limit":  15,
         "cameras": {
             "CAM_A": "http://192.168.2.5:8080/video",

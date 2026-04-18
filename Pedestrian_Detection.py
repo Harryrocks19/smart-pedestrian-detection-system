@@ -47,8 +47,8 @@ EMAIL_RECEIVER     = "receiver@gmail.com"
 
 # Telegram — get token from @BotFather, get chat_id from @userinfobot
 TELEGRAM_ENABLED   = False
-TELEGRAM_TOKEN     = "8737149461:AAFFOoyy8bUf3WUlLRVQ_f9HbIJ0a35hIBM"
-TELEGRAM_CHAT_ID   = "5019542297"
+TELEGRAM_TOKEN     = os.environ.get("TELEGRAM_TOKEN", "")
+TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID", "")
 
 # Restricted Zone — loaded from tenant config
 RESTRICTED_ZONE    = _tenant.get("restricted_zone", (300, 50, 580, 300))
@@ -1040,7 +1040,8 @@ while True:
     running_count  = behaviors_this_frame.count("Running")
     jaywalk_count  = behaviors_this_frame.count("Jaywalking!")
     sudden_count   = behaviors_this_frame.count("Sudden Move!")
-    cv2.rectangle(overlay, (0, 220), (275, 310), BLACK, -1)
+    overlay = display.copy()
+    cv2.rectangle(overlay, (0, 220), (275, 430), BLACK, -1)
     cv2.addWeighted(overlay, 0.5, display, 0.5, 0, display)
     cv2.putText(display, f"Running    : {running_count}",  (10, 232), cv2.FONT_HERSHEY_SIMPLEX, 0.50, RED,    1)
     cv2.putText(display, f"Jaywalking : {jaywalk_count}",  (10, 252), cv2.FONT_HERSHEY_SIMPLEX, 0.50, ORANGE, 1)
@@ -1048,15 +1049,15 @@ while True:
     cv2.putText(display, f"Vehicles   : {len(vehicle_boxes)}", (10, 292), cv2.FONT_HERSHEY_SIMPLEX, 0.50, ORANGE, 1)
     cv2.putText(display, f"Risk       : {len(risk_indices)}",  (10, 312), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 100, 255), 1)
     cv2.putText(display, f"Hotspots   : {len(hotspots)}",       (10, 332), cv2.FONT_HERSHEY_SIMPLEX, 0.50, RED,           1)
-    cv2.putText(display, f"Predicted  : {pred_count}",          (10, 372), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 200, 255), 1)
-    cv2.putText(display, f"Re-IDs     : {len(reid_gallery)}",   (10, 392), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 255, 180), 1)
     sig_color = GREEN if signal_state == "GREEN" else (YELLOW if signal_state == "YELLOW" else RED)
     cv2.putText(display, f"Signal     : {signal_state}",         (10, 352), cv2.FONT_HERSHEY_SIMPLEX, 0.50, sig_color,     2)
+    cv2.putText(display, f"Predicted  : {pred_count}",          (10, 372), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 200, 255), 1)
+    cv2.putText(display, f"Re-IDs     : {len(reid_gallery)}",   (10, 392), cv2.FONT_HERSHEY_SIMPLEX, 0.50, (180, 255, 180), 1)
     an_color = (0, 255, 255) if is_anomaly else GREEN
-    cv2.putText(display, f"Anomaly    : {'YES z='+str(z_score) if is_anomaly else 'NO'}", (10, 372), cv2.FONT_HERSHEY_SIMPLEX, 0.45, an_color, 1)
+    cv2.putText(display, f"Anomaly    : {'YES z='+str(z_score) if is_anomaly else 'NO'}", (10, 412), cv2.FONT_HERSHEY_SIMPLEX, 0.45, an_color, 1)
     qu_color = (255, 165, 0) if is_queue else GREEN
-    cv2.putText(display, f"Queue      : {queue_count} {'ALERT' if is_queue else 'OK'}", (10, 392), cv2.FONT_HERSHEY_SIMPLEX, 0.45, qu_color, 1)
-    cv2.putText(display, f"LeftBehind : {len(left_behind)}", (10, 412), cv2.FONT_HERSHEY_SIMPLEX, 0.45, RED if left_behind else GREEN, 1)
+    cv2.putText(display, f"Queue      : {queue_count} {'ALERT' if is_queue else 'OK'}", (10, 432), cv2.FONT_HERSHEY_SIMPLEX, 0.45, qu_color, 1)
+    cv2.putText(display, f"LeftBehind : {len(left_behind)}", (10, 452), cv2.FONT_HERSHEY_SIMPLEX, 0.45, RED if left_behind else GREEN, 1)
 
     # ── Heatmap Overlay ─────────────────────────────────────────────────────────
     if show_heatmap:

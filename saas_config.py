@@ -68,7 +68,7 @@ def get_plan(tenant_id: str) -> dict:
     tenant = get_tenant(tenant_id)
     return PLANS.get(tenant.get("plan", "basic"), PLANS["basic"])
 
-def validate_api_key(api_key: str) -> str | None:
+def validate_api_key(api_key: str):
     """Returns tenant_id if valid, else None."""
     for tid, cfg in TENANTS.items():
         if cfg["api_key"] == api_key:

@@ -159,6 +159,37 @@ if df is not None:
     col5.metric("Anomalies",        len(anom_df) if anom_df is not None else 0)
     col6.metric("Queue Events",     len(queue_df)if queue_df is not None else 0)
 
+    # ── Crowd Risk Level ─────────────────────────────────────────────────────────────
+    if len(df) > 0:
+        cur_people = int(df['people'].iloc[0])
+        cur_viol   = int(df['violations'].iloc[0]) if 'violations' in df.columns else 0
+        score = cur_people + cur_viol * 0.5
+        if score < 3:
+            risk_label, risk_color = "LOW 🟢",    "green"
+        elif score < 6:
+            risk_label, risk_color = "MEDIUM 🟡", "orange"
+        else:
+            risk_label, risk_color = "HIGH 🔴",   "red"
+        st.markdown(f"### Crowd Risk Level: :{risk_color}[{risk_label}]")
+
+    # ── Emergency Status ─────────────────────────────────────────────────────────────────
+    emg_log = "logs/emergency_log.csv"
+    if os.path.exists(emg_log):
+        try:
+            emg_df = pd.read_csv(emg_log)
+            if len(emg_df) > 0:
+                last_emg = emg_df.iloc[-1]
+                if last_emg.get("Result", "") == "DISTRESS":
+                    st.error(f"🚨 EMERGENCY DETECTED — Last input: `{last_emg.get('Input','')}` at {last_emg.get('Timestamp','')}")
+                else:
+                    st.success("✅ Emergency Status: NORMAL")
+                with st.expander("🚨 Emergency Log"):
+                    st.dataframe(emg_df.tail(10), use_container_width=True)
+        except Exception:
+            pass
+    else:
+        st.info("🚨 Emergency Status: No data yet. Run emergency_detector.py or type in terminal.")
+
     dc1, dc2, dc3 = st.columns(3)
     dc1.metric("Peak Vehicles",   int(df['vehicles'].max()) if len(df) > 0 else 0)
     dc2.metric("Peak Risk Count", int(df['risk'].max())     if len(df) > 0 else 0)
@@ -292,6 +323,31 @@ if os.path.exists(INCIDENT_DIR):
         st.info("No incident clips yet.")
 else:
     st.info("Incident folder not found.")
+
+st.markdown("---")
+
+# ── Emergency Detector UI ─────────────────────────────────────────────────────
+st.subheader("🚨 Silent Emergency Detection")
+st.caption("Type a message below. Gemini AI will classify it as DISTRESS or NORMAL. Safe word: 'pineapple'")
+
+col_e1, col_e2 = st.columns([3, 1])
+with col_e1:
+    emg_input = st.text_input("Enter message (e.g. 'help', 'pineapple', 'I need assistance')",
+                               key="emg_input", placeholder="Type here...")
+with col_e2:
+    check_btn = st.button("🔍 Check", use_container_width=True)
+
+if check_btn and emg_input:
+    try:
+        from emergency_detector import EmergencyDetector
+        det    = EmergencyDetector()
+        result = det.check(emg_input, source="dashboard")
+        if result:
+            st.error(f"🚨 EMERGENCY DETECTED! Input: `{emg_input}`")
+        else:
+            st.success(f"✅ NORMAL — No distress detected in: `{emg_input}`")
+    except Exception as e:
+        st.warning(f"Emergency detector error: {e}")
 
 st.markdown("---")
 

@@ -14,7 +14,7 @@ import sqlite3
 from datetime import datetime
 
 # ── Config ────────────────────────────────────────────────────────────────────
-DB_TYPE     = "postgresql"   # "postgresql" or "sqlite"
+DB_TYPE     = os.environ.get("DB_TYPE", "sqlite")   # "postgresql" or "sqlite"
 
 # PostgreSQL credentials — fill your password
 PG_HOST     = "localhost"

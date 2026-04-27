@@ -19,6 +19,35 @@ try:
 except Exception:
     DB_ENABLED = False
 
+# ── Emergency Detector ─────────────────────────────────────────────────────────────
+try:
+    from emergency_detector import EmergencyDetector
+    _emergency_status = {"active": False, "text": "", "triggered_at": 0}
+
+    def _on_emergency(text, source):
+        _emergency_status["active"]      = True
+        _emergency_status["text"]        = text
+        _emergency_status["triggered_at"] = 0
+
+    emergency_detector = EmergencyDetector(on_emergency=_on_emergency)
+    EMERGENCY_ENABLED  = True
+
+    def _emergency_input_thread():
+        """Background thread: reads stdin for emergency text input."""
+        while True:
+            try:
+                text = input()
+                emergency_detector.check(text)
+            except Exception:
+                break
+
+    threading.Thread(target=_emergency_input_thread, daemon=True).start()
+    print("Emergency detector ready. Type text in terminal to check for distress.")
+except Exception as _ee:
+    EMERGENCY_ENABLED = False
+    _emergency_status = {"active": False, "text": "", "triggered_at": 0}
+    print(f"Emergency detector unavailable: {_ee}")
+
 # ── SaaS Tenant Config ────────────────────────────────────────────────────────
 ACTIVE_TENANT_ID = os.environ.get("TENANT_ID", "city_pune")
 try:
@@ -129,6 +158,8 @@ except Exception as _e:
     print(f"YOLOv8 person detector unavailable ({_e}), falling back to HOG.")
     hog = cv2.HOGDescriptor()
     hog.setSVMDetector(cv2.HOGDescriptor_getDefaultPeopleDetector())
+else:
+    hog = None  # not needed when YOLO is available
 
 # ── Face Detector ─────────────────────────────────────────────────────────────
 face_cascade  = cv2.CascadeClassifier(cv2.data.haarcascades + "haarcascade_frontalface_default.xml")
@@ -374,7 +405,8 @@ def update_signal(people, vehicles, risk, ts):
 def draw_signal(frame, state, x=None, y=20):
     """Draw a traffic light widget on the frame."""
     h, w = frame.shape[:2]
-    x = x or w - 60
+    if x is None:
+        x = w - 60
     colors = {"RED": (RED, BLACK, BLACK),
               "YELLOW": (BLACK, YELLOW, BLACK),
               "GREEN": (BLACK, BLACK, GREEN)}
@@ -386,6 +418,30 @@ def draw_signal(frame, state, x=None, y=20):
     cv2.circle(frame, (x+20, y+90),  14, g_col, -1)   # GREEN
     cv2.putText(frame, state, (x-10, y+125),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.4, WHITE, 1)
+
+
+# ── Crowd Risk Level ─────────────────────────────────────────────────────────
+RISK_LOW_THRESH    = 3    # < this → LOW (green)
+RISK_MEDIUM_THRESH = 6    # < this → MEDIUM (yellow), else HIGH (red)
+
+def compute_crowd_risk(people_count, violation_count):
+    """Returns (risk_label, bgr_color, risk_int 0/1/2)"""
+    score = people_count + violation_count * 0.5
+    if score < RISK_LOW_THRESH:
+        return "LOW",    (0, 200, 0),   0
+    elif score < RISK_MEDIUM_THRESH:
+        return "MEDIUM", (0, 200, 255), 1
+    else:
+        return "HIGH",   (0, 0, 255),   2
+
+
+def draw_risk_badge(frame, risk_label, color):
+    h, w = frame.shape[:2]
+    label = f"Crowd Risk: {risk_label}"
+    (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.8, 2)
+    x, y = w // 2 - tw // 2, h - 30
+    cv2.rectangle(frame, (x - 8, y - th - 8), (x + tw + 8, y + 8), color, -1)
+    cv2.putText(frame, label, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.8, WHITE, 2)
 
 
 # ── Crowd Density config ─────────────────────────────────────────────────────────────
@@ -964,6 +1020,31 @@ while True:
     cv2.putText(display, "COUNT LINE", (5, LINE_Y-6),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.45, BLUE, 1)
 
+    # ── Crowd Risk Badge ──────────────────────────────────────────────────────
+    risk_label, risk_color, risk_int = compute_crowd_risk(people_count, len(violations))
+    draw_risk_badge(display, risk_label, risk_color)
+
+    # ── Emergency Status Overlay ──────────────────────────────────────────────
+    if _emergency_status["active"]:
+        cv2.rectangle(display, (0, 0), (w, h), (0, 0, 255), 8)
+        cv2.putText(display, "EMERGENCY DETECTED", (w//2-180, 50),
+                    cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), 3)
+        cv2.putText(display, f"Input: {_emergency_status['text'][:40]}",
+                    (w//2-180, 80), cv2.FONT_HERSHEY_SIMPLEX, 0.55, (0, 0, 255), 2)
+        if now - alarm_sent_time > 15:
+            threading.Thread(target=play_alarm, daemon=True).start()
+            alarm_sent_time = now
+        # Auto-reset after 10 seconds using a module-level timer
+        if _emergency_status.get("triggered_at", 0) == 0:
+            _emergency_status["triggered_at"] = now
+        if now - _emergency_status["triggered_at"] > 10:
+            _emergency_status["active"]      = False
+            _emergency_status["triggered_at"] = 0
+            if EMERGENCY_ENABLED:
+                emergency_detector.reset()
+    else:
+        _emergency_status["triggered_at"] = 0
+
     # ── Crowd + Zone Alert ────────────────────────────────────────────────────
     alert = people_count >= CROWD_LIMIT or zone_intruders > 0 or bool(risk_indices)
     if people_count >= CROWD_LIMIT:
@@ -1032,8 +1113,9 @@ while True:
     cv2.putText(display, f"Violations : {len(violations)}",      (10, 110), cv2.FONT_HERSHEY_SIMPLEX, 0.55, YELLOW, 2)
     cv2.putText(display, f"Zone Breach: {zone_intruders}",       (10, 132), cv2.FONT_HERSHEY_SIMPLEX, 0.55, PURPLE, 2)
     cv2.putText(display, f"Alert      : {'YES' if alert else 'NO'}", (10, 154), cv2.FONT_HERSHEY_SIMPLEX, 0.55, RED if alert else GREEN, 2)
-    cv2.putText(display, f"Night      : {'ON' if night_mode else 'OFF'}", (10, 176), cv2.FONT_HERSHEY_SIMPLEX, 0.45, YELLOW, 1)
-    cv2.putText(display, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), (10, 198), cv2.FONT_HERSHEY_SIMPLEX, 0.42, WHITE, 1)
+    cv2.putText(display, f"Risk Level : {risk_label}", (10, 176), cv2.FONT_HERSHEY_SIMPLEX, 0.55, risk_color, 2)
+    cv2.putText(display, f"Night      : {'ON' if night_mode else 'OFF'}", (10, 198), cv2.FONT_HERSHEY_SIMPLEX, 0.45, YELLOW, 1)
+    cv2.putText(display, datetime.now().strftime("%Y-%m-%d %H:%M:%S"), (10, 218), cv2.FONT_HERSHEY_SIMPLEX, 0.42, WHITE, 1)
 
     # Behavior summary counts
     behaviors_this_frame = [classify_behavior(int(t[4]), int((t[0]+t[2])//2), int((t[1]+t[3])//2), LINE_Y)[0] for t in tracked]

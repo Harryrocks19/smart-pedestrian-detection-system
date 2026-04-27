@@ -1,0 +1,48 @@
+# Railway configuration for AI Insem deployment
+
+[build]
+# Use Dockerfile for building
+builder = "dockerfile"
+# Ensure proper build context
+context = "."
+
+[deploy]
+# Use custom start script
+startCommand = "./start.sh"
+
+# Runtime configuration
+restartPolicyType = "always"
+restartPolicyMaxRetries = 5
+
+# Health check configuration
+healthCheckPath = "/status"
+healthCheckTimeout = 300
+healthCheckInterval = 30
+
+# Environment variables
+[env]
+PYTHONUNBUFFERED = "1"
+PORT = "5000"
+STREAMLIT_SERVER_PORT = "8501"
+STREAMLIT_SERVER_ADDRESS = "0.0.0.0"
+STREAMLIT_SERVER_HEADLESS = "true"
+
+# Resource limits
+[resources]
+# Minimum resources
+cpuRequest = "0.5"
+memoryRequest = "512Mi"
+# Maximum resources (auto-scaling)
+cpuLimit = "1"
+memoryLimit = "1Gi"
+
+# Port configuration
+[[ports]]
+port = 5000
+name = "api"
+protocol = "HTTP"
+
+[[ports]]
+port = 8501
+name = "dashboard"
+protocol = "HTTP"
